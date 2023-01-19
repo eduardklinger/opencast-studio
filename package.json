@@ -33,15 +33,17 @@
     "react": "^18.2.0",
     "react-beforeunload": "^2.5.3",
     "react-dom": "^18.2.0",
-    "react-hook-form": "^3.29.4",
+    "react-hook-form": "^7.42.0",
     "react-hotkeys": "^2.0.0",
     "react-i18next": "^12.1.4",
     "react-page-visibility": "^7.0.0",
     "react-router-dom": "^5.3.4",
     "react-scripts": "^5.0.1",
+    "react-select": "^5.7.0",
     "theme-ui": "^0.14.7",
     "use-resize-observer": "^7.0.1"
   },
+  "proxy": "http://localhost:8080",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/elan-ev/opencast-studio.git"

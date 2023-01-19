@@ -14,7 +14,7 @@ import { Button, Box, Container, Spinner, Text } from '@theme-ui/components';
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Trans, useTranslation } from 'react-i18next';
-import useForm from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { usePageVisibility } from 'react-page-visibility';
 
 import {
@@ -30,7 +30,7 @@ import {
   UPLOAD_NOT_AUTHORIZED,
   UPLOAD_UNEXPECTED_RESPONSE,
 } from '../../../opencast';
-import { useSettings, FORM_FIELD_HIDDEN, FORM_FIELD_REQUIRED } from '../../../settings';
+import { useSettings, FORM_FIELD_HIDDEN, FORM_FIELD_REQUIRED, FORM_FIELD_OPTIONAL } from '../../../settings';
 import {
   useDispatch,
   useStudioState,
@@ -42,7 +42,7 @@ import {
 
 import Notification from '../../notification';
 import { ActionButtons } from '../elements';
-import { Input } from '../../elements';
+import { Input, Dropdown } from '../../elements';
 
 import RecordingPreview from './recording-preview';
 
@@ -57,7 +57,7 @@ export default function SaveCreation(props) {
   const settings = useSettings();
   const { t } = useTranslation();
   const opencast = useOpencast();
-  const { recordings, upload: uploadState, title, presenter, start, end } = useStudioState();
+  const { recordings, upload: uploadState, title, presenter, start, end, series } = useStudioState();
   const dispatch = useDispatch();
 
   function handleBack() {
@@ -148,6 +148,7 @@ export default function SaveCreation(props) {
       presenter,
       start,
       end,
+      series,
       uploadSettings: settings.upload,
       onProgress,
     });
@@ -395,15 +396,23 @@ const UploadForm = ({ uploadState, handleUpload }) => {
   const {
     titleField = FORM_FIELD_REQUIRED,
     presenterField = FORM_FIELD_REQUIRED,
+    seriesField = FORM_FIELD_REQUIRED,
+    seriesId = null,
   } = useSettings().upload || {};
 
   const { t } = useTranslation();
   const opencast = useOpencast();
   const dispatch = useDispatch();
-  const { recordings, title, presenter } = useStudioState();
+  const { recordings, title, presenter, series } = useStudioState();
   const presenterValue = presenter || window.localStorage.getItem(LAST_PRESENTER_KEY) || '';
 
-  const { errors, handleSubmit, register } = useForm();
+  const { formState: { errors }, control, handleSubmit, register } = useForm();
+
+  const seriesList = [];
+
+  for (const [key, value] of opencast.getSeries()) {
+    seriesList.push({ value: key, label: value });
+  }
 
   // This is a bit ugly, but works. We want to make sure that the `title` and
   // `presenter` values in the studio state always equal the current value in
@@ -418,6 +427,11 @@ const UploadForm = ({ uploadState, handleUpload }) => {
     if (target.name === 'presenter') {
       window.localStorage.setItem(LAST_PRESENTER_KEY, target.value);
     }
+  }
+
+  async function handleSelectChange(event) {
+    let series = event ? event.value : null;
+    dispatch({ type: 'UPDATE_SERIES', payload: series });
   }
 
   // If the user has not yet changed the value of the field and the last used
@@ -470,6 +484,37 @@ const UploadForm = ({ uploadState, handleUpload }) => {
             autoComplete="off"
             defaultValue={presenterValue}
             {...{ errors, register }}
+          /> }
+
+          { seriesField !== FORM_FIELD_HIDDEN && <Controller
+            name="series"
+            control={control}
+            onChange={([selected]) => {
+              return { value: selected };
+            }}
+            defaultValue={{}}
+            render={() => (
+              <Dropdown
+                name="series"
+                label={t('save-creation-label-series')}
+                required={seriesField === FORM_FIELD_REQUIRED}
+                disabled={seriesId}
+                onChange={handleSelectChange}
+                autoComplete="off"
+                options={seriesList}
+                clearable={seriesField === FORM_FIELD_OPTIONAL}
+                defaultValue={() => {
+                  if (!seriesId && !series) {
+                    return;
+                  }
+                  return seriesList.find(obj => {
+                    return obj.value === (seriesId ? seriesId : series);
+                  }) || { label: t("save-creation-series-unkown"), value: seriesId };
+                }}
+                placeholder={ t("save-creation-series-placeholder") }
+                {...{ errors, register }}
+              />
+            )}
           /> }
 
           <Button

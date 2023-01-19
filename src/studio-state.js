@@ -50,6 +50,8 @@ const initialState = () => ({
   start: null,
   end: null,
 
+  series: null,
+
   upload: {
     error: null,
     state: STATE_NOT_UPLOADED,
@@ -172,6 +174,9 @@ const reducer = (state, action) => {
 
     case 'UPDATE_END':
       return { ...state, end: action.payload };
+
+    case 'UPDATE_SERIES':
+      return { ...state, series: action.payload };
 
     case 'RESET':
       return initialState();

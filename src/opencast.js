@@ -60,6 +60,7 @@ export class Opencast {
 
   updateGlobalOc = null;
 
+  seriesList = new Map();
 
   constructor(settings) {
     // If the server URL is not given, we stay in unconfigured state and
@@ -94,9 +95,28 @@ export class Opencast {
   static async init(settings) {
     let self = new Opencast(settings);
     await self.updateUser();
+    await self.updateSeries();
     return self;
   }
 
+  async updateSeries() {
+    let series;
+    try {
+      series = await this.jsonRequest('studio/series.json');
+      for(const s of series) {
+        this.seriesList.set(s.id, s.title);
+      }
+      return this.seriesList;
+    } catch (e) {
+      // If it's not our own error, rethrow it.
+      if (!(e instanceof RequestError)) {
+        throw e;
+      }
+
+      console.error('error when getting studio/series', e);
+      return new Map();
+    }
+  }
   // Updates the global OC instance from `this` to `newInstance`.
   setGlobalInstance(newInstance) {
     if (!this.updateGlobalOc) {
@@ -120,6 +140,7 @@ export class Opencast {
     const changed = await this.updateUser();
     if (changed) {
       this.updateGlobalOc?.(this);
+      await this.updateSeries();
     }
   }
 
@@ -311,7 +332,7 @@ export class Opencast {
   //
   // At the start of this method, `refreshConnection` is called. That
   // potentially changed the `state`.
-  async upload({ recordings, title, presenter, start, end, uploadSettings, onProgress }) {
+  async upload({ recordings, title, presenter, start, end, series, uploadSettings, onProgress }) {
     // Refresh connection and check if we are ready to upload.
     await this.refreshConnection();
     switch (this.#state) {
@@ -335,7 +356,7 @@ export class Opencast {
         .then(response => response.text());
 
       // Add metadata to media package
-      mediaPackage = await this.addDcCatalog({ mediaPackage, uploadSettings, title, presenter });
+      mediaPackage = await this.addDcCatalog({ mediaPackage, uploadSettings, title, presenter, series });
 
       // Set appropriate ACL unless the configuration says no.
       if (uploadSettings?.acl !== false) {
@@ -368,7 +389,7 @@ export class Opencast {
         throw e;
       }
 
-      console.error("Error occured during upload: ", e);
+      console.error("Error occurred during upload: ", e);
 
       if (e instanceof NetworkError) {
         return UPLOAD_NETWORK_ERROR;
@@ -388,8 +409,8 @@ export class Opencast {
 
   // Adds the DC Catalog with the given metadata to the current ingest process
   // via `ingest/addDCCatalog`. Do not call this method outside of `upload`!
-  async addDcCatalog({ mediaPackage, title, presenter, uploadSettings }) {
-    const seriesId = uploadSettings?.seriesId;
+  async addDcCatalog({ mediaPackage, title, presenter, series, uploadSettings }) {
+    const seriesId = series ? series : uploadSettings?.seriesId;
     const template = uploadSettings?.dcc || DEFAULT_DCC_TEMPLATE;
     const dcc = this.constructDcc(template, { presenter, title, seriesId });
 
@@ -566,6 +587,10 @@ export class Opencast {
     };
 
     return renderTemplate(template, view);
+  }
+
+  getSeries() {
+    return this.seriesList;
   }
 }
 

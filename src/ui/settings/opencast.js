@@ -5,7 +5,7 @@ import { jsx } from 'theme-ui';
 import { useTranslation } from 'react-i18next';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCheckCircle, faCircleNotch, faExclamationCircle } from "@fortawesome/free-solid-svg-icons";
-import useForm from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { Link, useLocation } from 'react-router-dom';
 import { Box, Button } from '@theme-ui/components';
 
@@ -36,7 +36,7 @@ function OpencastSettings({ settingsManager }) {
   const { t } = useTranslation();
   const opencast = useOpencast();
   const [error, setError] = useState();
-  const { errors, handleSubmit, register } = useForm({
+  const { formState: { errors }, handleSubmit, register } = useForm({
     defaultValues: settingsManager.formValues().opencast
   });
   const [status, setStatus] = useState('initial');
